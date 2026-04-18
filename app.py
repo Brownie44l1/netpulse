@@ -1,12 +1,12 @@
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
-from simulator import NetworkSimulator
+from capture import NetworkCapture
 import threading
 
 app = Flask(__name__)
 CORS(app)
 
-simulator = NetworkSimulator()
+simulator = NetworkCapture()
 
 def run_simulator():
     simulator.run()
