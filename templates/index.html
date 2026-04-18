@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NetPulse — Network Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  /* ── RESET & BASE ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #050d1a;
+    --panel:    #0a1628;
+    --border:   #0e2a4a;
+    --accent:   #00d4ff;
+    --accent2:  #00ff9d;
+    --danger:   #ff3d6b;
+    --warning:  #ffaa00;
+    --text:     #c8dff0;
+    --dim:      #3a5a7a;
+    --mono:     'Share Tech Mono', monospace;
+    --body:     'Exo 2', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,212,255,0.015) 2px,
+      rgba(0,212,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; padding: 0 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px rgba(0,212,255,0.5);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,212,255,0.4); }
+    50%       { box-shadow: 0 0 35px rgba(0,212,255,0.8); }
+  }
+
+  .logo-icon svg { width: 22px; height: 22px; fill: var(--bg); }
+
+  .logo-text h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+  }
+
+  .logo-text p {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    text-transform: uppercase;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: blink 1s step-end infinite;
+    box-shadow: 0 0 8px var(--accent2);
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  #clock {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  /* ── STAT CARDS ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+
+  .stat-card:hover { border-color: var(--accent); }
+
+  .stat-label {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.4rem;
+    font-family: var(--mono);
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    text-shadow: 0 0 15px rgba(0,212,255,0.4);
+  }
+
+  .stat-value.danger { color: var(--danger); text-shadow: 0 0 15px rgba(255,61,107,0.4); }
+  .stat-value.warn   { color: var(--warning); text-shadow: 0 0 15px rgba(255,170,0,0.4); }
+  .stat-value.green  { color: var(--accent2); text-shadow: 0 0 15px rgba(0,255,157,0.4); }
+
+  .stat-sub {
+    font-size: 0.7rem;
+    color: var(--dim);
+    margin-top: 0.3rem;
+    font-family: var(--mono);
+  }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* ── PANELS ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,212,255,0.03);
+  }
+
+  .panel-title {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .panel-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  .panel-badge.active { background: rgba(0,255,157,0.1); color: var(--accent2); border: 1px solid rgba(0,255,157,0.2); }
+  .panel-badge.alert  { background: rgba(255,61,107,0.1); color: var(--danger); border: 1px solid rgba(255,61,107,0.2); }
+
+  /* ── DEVICE TABLE ── */
+  .device-table { width: 100%; border-collapse: collapse; }
+
+  .device-table th {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 0.6rem 1.2rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .device-table td {
+    padding: 0.75rem 1.2rem;
+    font-size: 0.82rem;
+    border-bottom: 1px solid rgba(14,42,74,0.5);
+    vertical-align: middle;
+  }
+
+  .device-table tr:last-child td { border-bottom: none; }
+
+  .device-table tr { transition: background 0.2s; }
+  .device-table tr:hover td { background: rgba(0,212,255,0.04); }
+  .device-table tr.flagged td { background: rgba(255,61,107,0.05); }
+  .device-table tr.flagged:hover td { background: rgba(255,61,107,0.09); }
+
+  .device-name {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-weight: 600;
+  }
+
+  .flag-badge {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--danger);
+    color: white;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    font-family: var(--mono);
+    animation: flash 1s ease-in-out infinite;
+  }
+
+  @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .mono { font-family: var(--mono); font-size: 0.78rem; color: var(--dim); }
+
+  .proto-tag {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+
+  .proto-TCP  { background: rgba(0,212,255,0.12); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
+  .proto-UDP  { background: rgba(0,255,157,0.1);  color: var(--accent2); border: 1px solid rgba(0,255,157,0.2); }
+  .proto-ICMP { background: rgba(255,170,0,0.1);  color: var(--warning); border: 1px solid rgba(255,170,0,0.2); }
+
+  /* ── BANDWIDTH BAR ── */
+  .bw-bar-wrap { display: flex; align-items: center; gap: 0.6rem; }
+
+  .bw-bar-track {
+    flex: 1;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bw-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  .bw-bar-fill.normal   { background: linear-gradient(90deg, var(--accent2), #00c97a); }
+  .bw-bar-fill.moderate { background: linear-gradient(90deg, var(--warning), #ff7700); }
+  .bw-bar-fill.abusive  { background: linear-gradient(90deg, var(--danger), #ff0033); box-shadow: 0 0 8px var(--danger); }
+
+  .bw-label {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    min-width: 55px;
+    text-align: right;
+  }
+
+  .bw-label.abusive { color: var(--danger); }
+  .bw-label.moderate { color: var(--warning); }
+  .bw-label.normal { color: var(--accent2); }
+
+  /* ── ALERTS PANEL ── */
+  .alerts-list { padding: 0.5rem 0; max-height: 300px; overflow-y: auto; }
+
+  .alerts-list::-webkit-scrollbar { width: 4px; }
+  .alerts-list::-webkit-scrollbar-track { background: transparent; }
+  .alerts-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .alert-item {
+    display: flex;
+    gap: 0.8rem;
+    padding: 0.6rem 1.2rem;
+    border-bottom: 1px solid rgba(14,42,74,0.4);
+    animation: slide-in 0.3s ease;
+  }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .alert-item:last-child { border-bottom: none; }
+
+  .alert-time {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--dim);
+    white-space: nowrap;
+    padding-top: 1px;
+  }
+
+  .alert-msg {
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .alert-item.critical .alert-msg { color: var(--danger); }
+  .alert-item.warning  .alert-msg { color: var(--warning); }
+  .alert-item.info     .alert-msg { color: var(--text); }
+
+  .alert-item.critical { background: rgba(255,61,107,0.04); }
+  .alert-item.warning  { background: rgba(255,170,0,0.03); }
+
+  /* ── PROTOCOL CHART ── */
+  .chart-wrap { padding: 1.2rem; }
+
+  .proto-chart-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .proto-name {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    width: 45px;
+    letter-spacing: 1px;
+  }
+
+  .proto-track {
+    flex: 1;
+    height: 22px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .proto-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex; align-items: center; padding-left: 8px;
+    font-family: var(--mono); font-size: 0.65rem;
+    transition: width 1s ease;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .proto-fill.TCP  { background: linear-gradient(90deg, rgba(0,212,255,0.5), rgba(0,212,255,0.2)); color: var(--accent); }
+  .proto-fill.UDP  { background: linear-gradient(90deg, rgba(0,255,157,0.5), rgba(0,255,157,0.2)); color: var(--accent2); }
+  .proto-fill.ICMP { background: linear-gradient(90deg, rgba(255,170,0,0.5),  rgba(255,170,0,0.2));  color: var(--warning); }
+
+  .proto-bytes {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--dim);
+    width: 70px;
+    text-align: right;
+  }
+
+  /* ── BANDWIDTH LEADERBOARD ── */
+  .bw-list { padding: 0.8rem 1.2rem; }
+
+  .bw-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(14,42,74,0.4);
+  }
+
+  .bw-item:last-child { border-bottom: none; }
+
+  .bw-rank {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--dim);
+    width: 18px;
+  }
+
+  .bw-info { flex: 1; }
+  .bw-hostname { font-size: 0.82rem; font-weight: 600; }
+  .bw-total { font-family: var(--mono); font-size: 0.65rem; color: var(--dim); }
+
+  /* ── FOOTER ── */
+  footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-text {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  .footer-text span { color: var(--accent); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .main-grid { grid-template-columns: 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 500px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .device-table th:nth-child(3),
+    .device-table td:nth-child(3),
+    .device-table th:nth-child(4),
+    .device-table td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>NetPulse</h1>
+        <p>LAN Network Monitor v1.0</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div> Live</div>
+      <div id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- STAT CARDS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Active Devices</div>
+      <div class="stat-value green" id="stat-devices">--</div>
+      <div class="stat-sub">on hotspot</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Data Used</div>
+      <div class="stat-value" id="stat-data">-- MB</div>
+      <div class="stat-sub">this session</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Flagged Devices</div>
+      <div class="stat-value danger" id="stat-flagged">--</div>
+      <div class="stat-sub">anomaly detected</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Alerts</div>
+      <div class="stat-value warn" id="stat-alerts">--</div>
+      <div class="stat-sub">triggered</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID: device table + alerts -->
+  <div class="main-grid">
+
+    <!-- Device Table -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Connected Devices</span>
+        <span class="panel-badge active" id="device-count">0 online</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="device-table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>IP Address</th>
+              <th>Protocol</th>
+              <th>Service</th>
+              <th>Bandwidth</th>
+              <th>Packets</th>
+            </tr>
+          </thead>
+          <tbody id="device-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem;font-family:var(--mono);font-size:0.75rem;">Connecting to backend...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Alerts Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Alerts</span>
+        <span class="panel-badge alert" id="alert-count">0</span>
+      </div>
+      <div class="alerts-list" id="alerts-list">
+        <div class="alert-item info">
+          <span class="alert-time">--:--:--</span>
+          <span class="alert-msg">Waiting for data...</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM GRID: protocol chart + bandwidth leaderboard -->
+  <div class="bottom-grid">
+
+    <!-- Protocol Chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Protocol Traffic</span>
+      </div>
+      <div class="chart-wrap" id="proto-chart">
+        <div style="color:var(--dim);font-family:var(--mono);font-size:0.75rem;text-align:center;padding:1rem;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Bandwidth Leaderboard -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Bandwidth Leaderboard</span>
+        <span class="panel-badge alert">Session Total</span>
+      </div>
+      <div class="bw-list" id="bw-list">
+        <div style="color:var(--dim);font-family:var(--mono);font-size:0.75rem;text-align:center;padding:1rem;">Loading...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-text">NETPULSE &nbsp;/&nbsp; <span>SIMULATION MODE</span> &nbsp;/&nbsp; HOTSPOT MONITOR</div>
+    <div class="footer-text">LAST SYNC: <span id="last-sync">--:--:--</span></div>
+  </footer>
+
+</div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────
+  // Replace this with your actual Render backend URL after deploying
+  const API = "http://127.0.0.1:5000";
+  const POLL_MS = 2000;
+
+  // ── CLOCK ───────────────────────────────────────────────────────
+  function updateClock() {
+    document.getElementById("clock").textContent =
+      new Date().toLocaleTimeString("en-GB");
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── FORMAT HELPERS ───────────────────────────────────────────────
+  function fmtBytes(bytes) {
+    if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + " GB";
+    if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + " MB";
+    if (bytes >= 1e3) return (bytes / 1e3).toFixed(0) + " KB";
+    return bytes + " B";
+  }
+
+  function fmtMB(mb) {
+    if (mb >= 1024) return (mb / 1024).toFixed(2) + " GB";
+    return mb.toFixed(1) + " MB";
+  }
+
+  function fmtNum(n) {
+    return n >= 1000 ? (n / 1000).toFixed(1) + "k" : n;
+  }
+
+  // ── RENDER DEVICES ───────────────────────────────────────────────
+  function renderDevices(devices) {
+    const tbody = document.getElementById("device-tbody");
+    document.getElementById("device-count").textContent = devices.length + " online";
+
+    if (!devices.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:2rem;font-family:var(--mono);font-size:0.75rem;">No devices detected</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = devices.map(d => {
+      const flagHTML = d.flagged
+        ? `<span class="flag-badge">FLAGGED</span>` : "";
+      const pct = Math.min((d.current_mbps / 15) * 100, 100).toFixed(1);
+      return `
+        <tr class="${d.flagged ? "flagged" : ""}">
+          <td>
+            <div class="device-name">
+              <span>${d.emoji || "📡"}</span>
+              <span>${d.hostname}</span>
+              ${flagHTML}
+            </div>
+            <div class="mono">${d.mac || ""}</div>
+          </td>
+          <td class="mono">${d.ip}</td>
+          <td><span class="proto-tag proto-${d.protocol}">${d.protocol}</span></td>
+          <td style="font-size:0.75rem;color:var(--dim);">${d.service}</td>
+          <td>
+            <div class="bw-bar-wrap">
+              <div class="bw-bar-track">
+                <div class="bw-bar-fill ${d.behavior}" style="width:${pct}%"></div>
+              </div>
+              <span class="bw-label ${d.behavior}">${d.current_mbps} Mbps</span>
+            </div>
+          </td>
+          <td class="mono">${fmtNum(d.packet_count)}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  // ── RENDER ALERTS ────────────────────────────────────────────────
+  function renderAlerts(alerts) {
+    const list = document.getElementById("alerts-list");
+    document.getElementById("alert-count").textContent = alerts.length;
+
+    if (!alerts.length) {
+      list.innerHTML = `<div class="alert-item info"><span class="alert-time">--:--:--</span><span class="alert-msg">No alerts yet</span></div>`;
+      return;
+    }
+
+    list.innerHTML = alerts.slice(0, 30).map(a => `
+      <div class="alert-item ${a.level}">
+        <span class="alert-time">${a.time}</span>
+        <span class="alert-msg">${a.message}</span>
+      </div>
+    `).join("");
+  }
+
+  // ── RENDER PROTOCOL CHART ─────────────────────────────────────────
+  function renderProtoChart(data) {
+    const total = Object.values(data).reduce((s, v) => s + v, 0) || 1;
+    const wrap = document.getElementById("proto-chart");
+
+    wrap.innerHTML = Object.entries(data).map(([proto, bytes]) => {
+      const pct = ((bytes / total) * 100).toFixed(1);
+      return `
+        <div class="proto-chart-row">
+          <span class="proto-name" style="color:var(--${proto === 'TCP' ? 'accent' : proto === 'UDP' ? 'accent2' : 'warning'})">${proto}</span>
+          <div class="proto-track">
+            <div class="proto-fill ${proto}" style="width:${pct}%">${pct}%</div>
+          </div>
+          <span class="proto-bytes">${fmtBytes(bytes)}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ── RENDER BANDWIDTH LEADERBOARD ─────────────────────────────────
+  function renderBandwidth(data) {
+    const sorted = [...data].sort((a, b) => b.total_mb - a.total_mb);
+    const max = sorted[0]?.total_mb || 1;
+    const wrap = document.getElementById("bw-list");
+
+    wrap.innerHTML = sorted.map((d, i) => {
+      const pct = ((d.total_mb / max) * 100).toFixed(1);
+      const emoji = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "  ";
+      return `
+        <div class="bw-item">
+          <span class="bw-rank">${emoji}</span>
+          <div class="bw-info">
+            <div class="bw-hostname" style="color:${d.flagged ? 'var(--danger)' : 'var(--text)'}">${d.hostname}${d.flagged ? ' 🚨' : ''}</div>
+            <div class="bw-bar-wrap" style="margin-top:4px;">
+              <div class="bw-bar-track">
+                <div class="bw-bar-fill ${d.behavior}" style="width:${pct}%"></div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div class="bw-label ${d.behavior}" style="display:block;">${d.current_mbps} Mbps</div>
+            <div class="bw-total">${fmtMB(d.total_mb)}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // ── RENDER STATS ─────────────────────────────────────────────────
+  function renderStats(stats) {
+    document.getElementById("stat-devices").textContent = stats.active_devices;
+    document.getElementById("stat-data").textContent = fmtMB(stats.total_mb);
+    document.getElementById("stat-flagged").textContent = stats.flagged_devices;
+    document.getElementById("stat-alerts").textContent = stats.total_alerts;
+  }
+
+  // ── FETCH LOOP ───────────────────────────────────────────────────
+  async function fetchAll() {
+    try {
+      const [devices, alerts, protocols, bandwidth, stats] = await Promise.all([
+        fetch(`${API}/api/devices`).then(r => r.json()),
+        fetch(`${API}/api/alerts`).then(r => r.json()),
+        fetch(`${API}/api/protocols`).then(r => r.json()),
+        fetch(`${API}/api/bandwidth`).then(r => r.json()),
+        fetch(`${API}/api/stats`).then(r => r.json()),
+      ]);
+
+      renderDevices(devices);
+      renderAlerts(alerts);
+      renderProtoChart(protocols);
+      renderBandwidth(bandwidth);
+      renderStats(stats);
+
+      document.getElementById("last-sync").textContent =
+        new Date().toLocaleTimeString("en-GB");
+
+    } catch (err) {
+      console.error("Fetch error:", err);
+      document.getElementById("device-tbody").innerHTML =
+        `<tr><td colspan="6" style="text-align:center;color:var(--danger);padding:2rem;font-family:var(--mono);font-size:0.75rem;">⚠ Cannot reach backend — check API URL</td></tr>`;
+    }
+  }
+
+  fetchAll();
+  setInterval(fetchAll, POLL_MS);
+</script>
+</body>
+</html>
