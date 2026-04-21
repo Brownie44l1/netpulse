@@ -4,957 +4,705 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>NetPulse — Network Monitor</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS (CDN — no build step needed) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- IBM Plex Mono for that terminal/data aesthetic -->
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script>
+  // Extend Tailwind with our custom design tokens
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { mono: ["IBM Plex Mono", "monospace"] },
+        colors: {
+          surface: "#ffffff",
+          base:    "#f5f5f0",
+          border:  "#e0e0d8",
+          border2: "#c8c8be",
+          ink:     "#111111",
+          muted:   "#777770",
+          pulse:   "#f5c800",   // brand yellow
+        },
+      },
+    },
+  };
+</script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --bg:       #f5f5f0;
-  --surface:  #ffffff;
-  --border:   #e0e0d8;
-  --border2:  #c8c8be;
-  --text:     #111111;
-  --muted:    #777770;
-  --yellow:   #f5c800;
-  --yellow2:  #e0b400;
-  --green:    #16a34a;
-  --red:      #dc2626;
-  --amber:    #d97706;
-  --blue:     #1d4ed8;
-  --mono:     'IBM Plex Mono', monospace;
-  --sans:     'IBM Plex Sans', sans-serif;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.5;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
-
-.app {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 0 16px 32px;
-}
-
-/* ── HEADER ── */
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0 14px;
-  border-bottom: 1.5px solid var(--text);
-  margin-bottom: 16px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logo-mark {
-  width: 34px;
-  height: 34px;
-  background: var(--text);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.logo-mark svg { width: 20px; height: 20px; }
-
-.logo-text h1 {
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 2px;
-  color: var(--text);
-  text-transform: uppercase;
-  line-height: 1.1;
-}
-
-.logo-text p {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.live-badge {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--green);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.live-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--green);
-  border-radius: 50%;
-  animation: blink 1.2s step-end infinite;
-}
-
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-
-#clock {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-}
-
-/* ── STAT CARDS ── */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-@media (min-width: 600px) {
-  .stats-row { grid-template-columns: repeat(4, 1fr); }
-}
-
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--yellow);
-}
-
-.stat-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-
-.stat-value {
-  font-family: var(--mono);
-  font-size: 28px;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--text);
-}
-
-.stat-value.green  { color: var(--green); }
-.stat-value.red    { color: var(--red); }
-.stat-value.amber  { color: var(--amber); }
-
-.stat-sub {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 4px;
-  letter-spacing: 0.5px;
-}
-
-/* ── SECTION LABELS ── */
-.section-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 8px;
-  padding-left: 2px;
-}
-
-/* ── PANELS ── */
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-}
-
-.panel-title {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text);
-  font-weight: 500;
-}
-
-.badge {
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-weight: 500;
-}
-
-.badge.green  { background: #dcfce7; color: #15803d; }
-.badge.red    { background: #fee2e2; color: #dc2626; }
-.badge.yellow { background: #fef9c3; color: #92400e; }
-
-/* ── DEVICE CARDS (mobile) ── */
-.device-cards { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
-
-.device-card {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
-  position: relative;
-  background: var(--surface);
-}
-
-.device-card.flagged {
-  border-color: var(--red);
-  background: #fff8f8;
-}
-
-.device-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.device-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.2;
-}
-
-.device-name.flagged { color: var(--red); }
-
-.device-mac {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.flag-tag {
-  font-family: var(--mono);
-  font-size: 9px;
-  background: var(--red);
-  color: white;
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 1px;
-  animation: flash 1s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-@keyframes flash { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-.device-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.proto-tag {
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 2px 7px;
-  border-radius: 3px;
-  font-weight: 500;
-}
-
-.proto-tag.TCP  { background: #eff6ff; color: var(--blue); }
-.proto-tag.UDP  { background: #f0fdf4; color: var(--green); }
-.proto-tag.ICMP { background: #fffbeb; color: var(--amber); }
-
-.svc-tag {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  background: var(--bg);
-  padding: 2px 7px;
-  border-radius: 3px;
-  border: 1px solid var(--border);
-}
-
-.pkt-tag {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  margin-left: auto;
-}
-
-.bw-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.bw-track {
-  flex: 1;
-  height: 5px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.bw-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.8s ease;
-}
-
-.bw-fill.normal   { background: var(--green); }
-.bw-fill.moderate { background: var(--amber); }
-.bw-fill.abusive  { background: var(--red); }
-
-.bw-val {
-  font-family: var(--mono);
-  font-size: 11px;
-  min-width: 64px;
-  text-align: right;
-  font-weight: 500;
-}
-
-.bw-val.normal   { color: var(--green); }
-.bw-val.moderate { color: var(--amber); }
-.bw-val.abusive  { color: var(--red); }
-
-/* ── DESKTOP TABLE (hidden on mobile) ── */
-.device-table-wrap { display: none; }
-
-@media (min-width: 700px) {
-  .device-cards { display: none; }
-  .device-table-wrap { display: block; overflow-x: auto; }
-}
-
-.device-table { width: 100%; border-collapse: collapse; }
-
-.device-table th {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding: 8px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-}
-
-.device-table td {
-  padding: 10px 14px;
-  font-size: 13px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
-
-.device-table tr:last-child td { border-bottom: none; }
-.device-table tr.flagged td { background: #fff8f8; }
-.device-table tr:hover td { background: #fafaf8; }
-.device-table tr.flagged:hover td { background: #fff0f0; }
-
-/* ── ALERTS ── */
-.alerts-list {
-  padding: 4px 0;
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.alerts-list::-webkit-scrollbar { width: 3px; }
-.alerts-list::-webkit-scrollbar-track { background: transparent; }
-.alerts-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-.alert-item {
-  display: flex;
-  gap: 10px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.alert-item:last-child { border-bottom: none; }
-
-.alert-item.critical { background: #fff8f8; }
-.alert-item.warning  { background: #fffdf4; }
-
-.alert-time {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  white-space: nowrap;
-  padding-top: 1px;
-  flex-shrink: 0;
-}
-
-.alert-msg { font-size: 12px; line-height: 1.4; }
-.alert-item.critical .alert-msg { color: var(--red); }
-.alert-item.warning  .alert-msg { color: var(--amber); }
-.alert-item.info     .alert-msg { color: var(--text); }
-
-/* ── TWO COL on tablet+ ── */
-.two-col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-@media (min-width: 640px) {
-  .two-col {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-  .two-col > * { flex: 1; min-width: 0; }
-}
-
-/* ── PROTOCOL CHART ── */
-.chart-body { padding: 14px; }
-
-.proto-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.proto-row:last-child { margin-bottom: 0; }
-
-.proto-name {
-  font-family: var(--mono);
-  font-size: 11px;
-  width: 38px;
-  font-weight: 500;
-}
-
-.proto-name.TCP  { color: var(--blue); }
-.proto-name.UDP  { color: var(--green); }
-.proto-name.ICMP { color: var(--amber); }
-
-.proto-track {
-  flex: 1;
-  height: 22px;
-  background: var(--bg);
-  border-radius: 3px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-.proto-fill {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  padding-left: 8px;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  transition: width 1s ease;
-  white-space: nowrap;
-}
-
-.proto-fill.TCP  { background: #dbeafe; color: var(--blue); }
-.proto-fill.UDP  { background: #dcfce7; color: var(--green); }
-.proto-fill.ICMP { background: #fef9c3; color: var(--amber); }
-
-.proto-bytes {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  width: 58px;
-  text-align: right;
-}
-
-/* ── LEADERBOARD ── */
-.bw-list { padding: 8px 14px; }
-
-.bw-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.bw-item:last-child { border-bottom: none; }
-
-.bw-rank {
-  font-family: var(--mono);
-  font-size: 13px;
-  width: 22px;
-  color: var(--muted);
-}
-
-.bw-info { flex: 1; min-width: 0; }
-
-.bw-hostname {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bw-hostname.flagged { color: var(--red); }
-
-.bw-total {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.bw-right { text-align: right; flex-shrink: 0; }
-
-.bw-mbps {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.bw-mbps.normal   { color: var(--green); }
-.bw-mbps.moderate { color: var(--amber); }
-.bw-mbps.abusive  { color: var(--red); }
-
-/* ── IP TABLE (mobile bottom section) ── */
-.ip-table { padding: 8px 14px; }
-
-.ip-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border);
-  gap: 8px;
-}
-
-.ip-row:last-child { border-bottom: none; }
-
-.ip-host {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text);
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ip-addr {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-
-/* ── FOOTER ── */
-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1.5px solid var(--text);
-}
-
-@media (min-width: 480px) {
-  footer {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-}
-
-.footer-text {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.5px;
-}
-
-.footer-text b {
-  color: var(--text);
-  font-weight: 500;
-}
-
-/* ── YELLOW ACCENT STRIP ── */
-.yellow-strip {
-  height: 4px;
-  background: var(--yellow);
-  margin-bottom: 16px;
-  border-radius: 0 0 2px 2px;
-}
-
-/* ── IP tag inline ── */
-.ip-inline {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--muted);
-}
+  body { font-family: "IBM Plex Mono", monospace; }
+
+  /* Animated live dot */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .blink { animation: blink 1.2s step-end infinite; }
+
+  /* Flagged row pulse */
+  @keyframes flash { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .flash { animation: flash 1s ease-in-out infinite; }
+
+  /* Smooth bar transitions */
+  .bar-fill { transition: width 0.9s ease; }
+
+  /* Custom scrollbar for alert feed */
+  .alert-scroll::-webkit-scrollbar { width: 3px; }
+  .alert-scroll::-webkit-scrollbar-track { background: transparent; }
+  .alert-scroll::-webkit-scrollbar-thumb { background: #c8c8be; border-radius: 2px; }
 </style>
 </head>
-<body>
+<body class="bg-base text-ink min-h-screen antialiased">
 
-<div class="yellow-strip"></div>
+<!-- Yellow brand strip at top -->
+<div class="h-1 bg-pulse"></div>
 
-<div class="app">
+<div class="max-w-5xl mx-auto px-4 pb-10">
 
-  <!-- HEADER -->
-  <header>
-    <div class="logo">
-      <div class="logo-mark">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ── HEADER ────────────────────────────────────────────────────────── -->
+  <header class="flex items-center justify-between py-4 border-b-2 border-ink mb-4">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-ink rounded-lg flex items-center justify-center shrink-0">
+        <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5">
           <circle cx="12" cy="12" r="3" fill="#f5c800"/>
           <path d="M2 12h4M18 12h4M12 2v4M12 18v4" stroke="#f5c800" stroke-width="2" stroke-linecap="round"/>
-          <path d="M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M17.7 6.3l-2.1 2.1M8.4 15.6l-2.1 2.1" stroke="#f5c800" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M17.7 6.3l-2.1 2.1M8.4 15.6l-2.1 2.1"
+                stroke="#f5c800" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </div>
-      <div class="logo-text">
-        <h1>NetPulse</h1>
-        <p>LAN Monitor v1.0</p>
+      <div>
+        <h1 class="text-sm font-semibold tracking-[3px] uppercase">NetPulse</h1>
+        <p class="text-[9px] text-muted tracking-widest uppercase">LAN Monitor v1.0</p>
       </div>
     </div>
-    <div class="header-right">
-      <div class="live-badge"><div class="live-dot"></div>Live</div>
-      <div id="clock">--:--:--</div>
+
+    <!-- Status + clock -->
+    <div class="flex items-center gap-3 flex-wrap justify-end">
+      <div id="health-badge" class="flex items-center gap-1.5 text-[10px] tracking-widest uppercase text-green-600">
+        <span id="health-dot" class="w-2 h-2 rounded-full bg-green-500 blink"></span>
+        <span id="health-label">Connecting</span>
+      </div>
+      <span id="clock" class="text-[11px] text-muted">--:--:--</span>
     </div>
   </header>
 
-  <!-- STAT CARDS -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-label">Devices</div>
-      <div class="stat-value green" id="stat-devices">--</div>
-      <div class="stat-sub">active</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Data used</div>
-      <div class="stat-value" id="stat-data">--</div>
-      <div class="stat-sub">this session</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Flagged</div>
-      <div class="stat-value red" id="stat-flagged">--</div>
-      <div class="stat-sub">anomalies</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Alerts</div>
-      <div class="stat-value amber" id="stat-alerts">--</div>
-      <div class="stat-sub">triggered</div>
-    </div>
+  <!-- ── INTERFACE SWITCHER ─────────────────────────────────────────────── -->
+  <div id="iface-bar" class="flex items-center gap-2 flex-wrap pb-3 mb-4 border-b border-border">
+    <span class="text-[9px] text-muted tracking-widest uppercase mr-1">Monitor:</span>
+    <span class="text-[10px] text-muted">loading…</span>
+    <span id="iface-switching" class="hidden text-[9px] text-amber-600 tracking-widest">switching…</span>
   </div>
 
-  <!-- DEVICES -->
-  <div class="section-label">Connected devices</div>
-  <div class="panel" style="margin-bottom:12px;">
-    <div class="panel-header">
-      <span class="panel-title">All devices</span>
-      <span class="badge green" id="device-count">0 online</span>
+  <!-- ── STAT CARDS ─────────────────────────────────────────────────────── -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+
+    <!-- Each card has a yellow bottom accent strip -->
+    <div class="bg-surface border border-border rounded-lg p-3 relative overflow-hidden">
+      <div class="after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[3px] after:bg-pulse"></div>
+      <p class="text-[9px] text-muted tracking-widest uppercase mb-1">Devices</p>
+      <p id="stat-devices" class="text-3xl font-semibold text-green-600 leading-none">--</p>
+      <p class="text-[9px] text-muted mt-1">active</p>
     </div>
 
-    <!-- Mobile: cards -->
-    <div class="device-cards" id="device-cards">
-      <div style="padding:24px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);">Connecting to backend...</div>
+    <div class="bg-surface border border-border rounded-lg p-3 relative overflow-hidden">
+      <p class="text-[9px] text-muted tracking-widest uppercase mb-1">Data used</p>
+      <p id="stat-data" class="text-3xl font-semibold leading-none">--</p>
+      <p class="text-[9px] text-muted mt-1">this session</p>
     </div>
 
-    <!-- Desktop: table -->
-    <div class="device-table-wrap">
-      <table class="device-table">
+    <div class="bg-surface border border-border rounded-lg p-3 relative overflow-hidden">
+      <p class="text-[9px] text-muted tracking-widest uppercase mb-1">Flagged</p>
+      <p id="stat-flagged" class="text-3xl font-semibold text-red-600 leading-none">--</p>
+      <p class="text-[9px] text-muted mt-1">anomalies</p>
+    </div>
+
+    <div class="bg-surface border border-border rounded-lg p-3 relative overflow-hidden">
+      <p class="text-[9px] text-muted tracking-widest uppercase mb-1">Alerts</p>
+      <p id="stat-alerts" class="text-3xl font-semibold text-amber-600 leading-none">--</p>
+      <p class="text-[9px] text-muted mt-1">triggered</p>
+    </div>
+
+  </div>
+
+  <!-- ── DEVICES PANEL ─────────────────────────────────────────────────── -->
+  <p class="text-[9px] text-muted tracking-[2px] uppercase mb-2 pl-0.5">Connected devices</p>
+  <div class="bg-surface border border-border rounded-lg overflow-hidden mb-3">
+
+    <!-- Panel header -->
+    <div class="flex items-center justify-between px-4 py-2.5 border-b border-border bg-base">
+      <span class="text-[10px] tracking-widest uppercase font-medium">All devices</span>
+      <span id="device-count" class="text-[10px] bg-green-100 text-green-700 rounded-full px-2 py-0.5 font-medium">
+        0 online
+      </span>
+    </div>
+
+    <!-- Mobile: cards view (hidden on md+) -->
+    <div id="device-cards" class="flex flex-col gap-2 p-2 md:hidden">
+      <div class="text-center py-6 text-[11px] text-muted">Connecting to backend…</div>
+    </div>
+
+    <!-- Desktop: table view (hidden below md) -->
+    <div class="hidden md:block overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
         <thead>
-          <tr>
-            <th>Device</th>
-            <th>IP address</th>
-            <th>Protocol</th>
-            <th>Service</th>
-            <th>Bandwidth</th>
-            <th>Packets</th>
+          <tr class="bg-base border-b border-border">
+            <th class="text-left text-[9px] text-muted tracking-widest uppercase px-4 py-2 font-medium">Device</th>
+            <th class="text-left text-[9px] text-muted tracking-widest uppercase px-4 py-2 font-medium">IP Address</th>
+            <th class="text-left text-[9px] text-muted tracking-widest uppercase px-4 py-2 font-medium">Protocol</th>
+            <th class="text-left text-[9px] text-muted tracking-widest uppercase px-4 py-2 font-medium">Service</th>
+            <th class="text-left text-[9px] text-muted tracking-widest uppercase px-4 py-2 font-medium">Bandwidth</th>
+            <th class="text-left text-[9px] text-muted tracking-widest uppercase px-4 py-2 font-medium">Packets</th>
           </tr>
         </thead>
         <tbody id="device-tbody">
-          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--mono);font-size:11px;">Connecting to backend...</td></tr>
+          <tr>
+            <td colspan="6" class="text-center text-muted text-[11px] py-6">Connecting to backend…</td>
+          </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- ALERTS + PROTOCOLS (two-col on tablet+) -->
-  <div class="two-col">
+  <!-- ── ALERTS + PROTOCOLS (side by side on tablet+) ──────────────────── -->
+  <div class="flex flex-col sm:flex-row gap-3 mb-3">
 
-    <!-- Alerts -->
-    <div>
-      <div class="section-label">Alert feed</div>
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Alerts</span>
-          <span class="badge red" id="alert-count">0</span>
+    <!-- Alert feed -->
+    <div class="flex-1 min-w-0">
+      <p class="text-[9px] text-muted tracking-[2px] uppercase mb-2 pl-0.5">Alert feed</p>
+      <div class="bg-surface border border-border rounded-lg overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-border bg-base">
+          <span class="text-[10px] tracking-widest uppercase font-medium">Alerts</span>
+          <span id="alert-count" class="text-[10px] bg-red-100 text-red-600 rounded-full px-2 py-0.5 font-medium">0</span>
         </div>
-        <div class="alerts-list" id="alerts-list">
-          <div class="alert-item info">
-            <span class="alert-time">--:--:--</span>
-            <span class="alert-msg">Waiting for data...</span>
+        <div id="alerts-list" class="alert-scroll overflow-y-auto max-h-60">
+          <div class="flex gap-2.5 px-4 py-2 text-[11px] text-muted">
+            <span class="shrink-0">--:--:--</span>
+            <span>Waiting for data…</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Protocol chart -->
-    <div>
-      <div class="section-label">Protocol breakdown</div>
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Traffic by protocol</span>
+    <div class="flex-1 min-w-0">
+      <p class="text-[9px] text-muted tracking-[2px] uppercase mb-2 pl-0.5">Protocol breakdown</p>
+      <div class="bg-surface border border-border rounded-lg overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2.5 border-b border-border bg-base">
+          <span class="text-[10px] tracking-widest uppercase font-medium">Traffic by protocol</span>
         </div>
-        <div class="chart-body" id="proto-chart">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;padding:16px;">Loading...</div>
+        <div id="proto-chart" class="p-4">
+          <div class="text-center text-[11px] text-muted py-4">Loading…</div>
         </div>
       </div>
     </div>
 
   </div>
 
-  <!-- LEADERBOARD -->
-  <div class="section-label" style="margin-top:12px;">Bandwidth leaderboard</div>
-  <div class="panel">
-    <div class="panel-header">
-      <span class="panel-title">Top consumers</span>
-      <span class="badge yellow">Session total</span>
+  <!-- ── BANDWIDTH LEADERBOARD ─────────────────────────────────────────── -->
+  <p class="text-[9px] text-muted tracking-[2px] uppercase mb-2 pl-0.5">Bandwidth leaderboard</p>
+  <div class="bg-surface border border-border rounded-lg overflow-hidden mb-4">
+    <div class="flex items-center justify-between px-4 py-2.5 border-b border-border bg-base">
+      <span class="text-[10px] tracking-widest uppercase font-medium">Top consumers</span>
+      <span class="text-[10px] bg-yellow-100 text-yellow-800 rounded-full px-2 py-0.5 font-medium">Session total</span>
     </div>
-    <div class="bw-list" id="bw-list">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;padding:16px;">Loading...</div>
+    <div id="bw-list" class="px-4 py-2">
+      <div class="text-center text-[11px] text-muted py-4">Loading…</div>
     </div>
   </div>
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-text">NetPulse &nbsp;/&nbsp; <b>Capture + Simulation</b> &nbsp;/&nbsp; Hotspot monitor</div>
-    <div class="footer-text">Last sync: <b id="last-sync">--:--:--</b></div>
+  <!-- ── FOOTER ─────────────────────────────────────────────────────────── -->
+  <footer class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1
+                 pt-3 border-t-2 border-ink mt-2">
+    <p class="text-[10px] text-muted">
+      NetPulse &nbsp;/&nbsp; <span class="text-ink font-medium">Real-time LAN Monitor</span>
+    </p>
+    <p class="text-[10px] text-muted">
+      Last sync: <span id="last-sync" class="text-ink font-medium">--:--:--</span>
+    </p>
   </footer>
 
-</div>
+</div><!-- end .max-w-5xl -->
+
 
 <script>
-  const API = "http://127.0.0.1:5000";
-  const POLL_MS = 2000;
+// ─────────────────────────────────────────────────────────────────────────────
+// API base URL.
+// Empty string = same origin (Flask serves both the page and the API).
+// Falls back to 127.0.0.1:5000 only when the file is opened directly
+// without a web server (file:// protocol).
+// ─────────────────────────────────────────────────────────────────────────────
+const API     = location.protocol === "file:" ? "http://127.0.0.1:5000" : "";
+const POLL_MS = 2000;   // how often the dashboard re-fetches all data
 
-  // ── Clock ──
-  function tick() {
-    document.getElementById("clock").textContent = new Date().toLocaleTimeString("en-GB");
-  }
-  setInterval(tick, 1000);
-  tick();
+let currentIface  = null;   // name of the currently active interface
+let ifaceSwitching = false; // true while a switch request is in flight
 
-  // ── Formatters ──
-  function fmtBytes(b) {
-    if (b >= 1e9) return (b/1e9).toFixed(2)+" GB";
-    if (b >= 1e6) return (b/1e6).toFixed(1)+" MB";
-    if (b >= 1e3) return (b/1e3).toFixed(0)+" KB";
-    return b+" B";
-  }
-  function fmtMB(mb) {
-    if (mb >= 1024) return (mb/1024).toFixed(2)+" GB";
-    return mb.toFixed(1)+" MB";
-  }
-  function fmtNum(n) {
-    return n >= 1000 ? (n/1000).toFixed(1)+"k" : String(n);
-  }
 
-  // ── Devices: mobile cards ──
-  function renderDeviceCards(devs) {
-    const el = document.getElementById("device-cards");
-    if (!devs.length) {
-      el.innerHTML = `<div style="padding:24px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);">No devices detected</div>`;
-      return;
+// ─────────────────────────────────────────────────────────────────────────────
+// Clock
+// ─────────────────────────────────────────────────────────────────────────────
+function tick() {
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("en-GB");
+}
+setInterval(tick, 1000);
+tick();
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Formatters
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Format a raw byte count to a human-readable string (B / KB / MB / GB). */
+function fmtBytes(b) {
+  if (b >= 1e9) return (b / 1e9).toFixed(2) + " GB";
+  if (b >= 1e6) return (b / 1e6).toFixed(1) + " MB";
+  if (b >= 1e3) return (b / 1e3).toFixed(0) + " KB";
+  return b + " B";
+}
+
+/**
+ * Format a value already expressed in megabytes.
+ * Note: total_mb from the backend is already in MB, NOT bytes.
+ */
+function fmtMB(mb) {
+  if (mb >= 1024) return (mb / 1024).toFixed(2) + " GB";
+  if (mb >= 1)    return mb.toFixed(1) + " MB";
+  return (mb * 1024).toFixed(0) + " KB";
+}
+
+/** Compact large numbers: 12345 → '12.3k'. */
+function fmtNum(n) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+}
+
+/**
+ * Derive a display class (normal / moderate / abusive) from a device object.
+ * We check current_mbps ourselves rather than trusting behavior alone,
+ * because the backend only ever sets behavior to "normal" or "abusive" —
+ * there is no intermediate "moderate" state.
+ */
+function bwClass(dev) {
+  if (dev.flagged || dev.behavior === "abusive") return "abusive";
+  if ((dev.current_mbps || 0) >= 2)              return "moderate";
+  return "normal";
+}
+
+/** Map bwClass → Tailwind colour classes for text. */
+const BW_TEXT = {
+  normal:   "text-green-600",
+  moderate: "text-amber-500",
+  abusive:  "text-red-600",
+};
+
+/** Map bwClass → Tailwind colour classes for filled bar segments. */
+const BW_BAR = {
+  normal:   "bg-green-500",
+  moderate: "bg-amber-400",
+  abusive:  "bg-red-500",
+};
+
+/** Map protocol name → Tailwind colour classes for protocol tags. */
+const PROTO_BADGE = {
+  TCP:  "bg-blue-50  text-blue-700",
+  UDP:  "bg-green-50 text-green-700",
+  ICMP: "bg-amber-50 text-amber-700",
+};
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Health indicator
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Update the coloured dot + label in the header.
+ * state: "ok" | "degraded" | "connecting"
+ */
+function setHealth(state) {
+  const badge = document.getElementById("health-badge");
+  const dot   = document.getElementById("health-dot");
+  const label = document.getElementById("health-label");
+
+  // Reset all colour classes
+  badge.className = "flex items-center gap-1.5 text-[10px] tracking-widest uppercase";
+  dot.className   = "w-2 h-2 rounded-full";
+
+  if (state === "ok") {
+    badge.classList.add("text-green-600");
+    dot.classList.add("bg-green-500", "blink");
+    label.textContent = "Live";
+  } else if (state === "degraded") {
+    badge.classList.add("text-red-600");
+    dot.classList.add("bg-red-500");
+    label.textContent = "Offline";
+  } else {
+    badge.classList.add("text-amber-600");
+    dot.classList.add("bg-amber-400", "blink");
+    label.textContent = "Connecting";
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interface switcher
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function loadInterfaces() {
+  try {
+    const data = await fetch(`${API}/api/interfaces`).then(r => r.json());
+    currentIface = data.current;
+    renderIfaceBar(data.interfaces, data.current);
+  } catch (_) {
+    // Backend not up yet — leave the placeholder text
+  }
+}
+
+function renderIfaceBar(ifaces, active) {
+  const bar = document.getElementById("iface-bar");
+  bar.innerHTML = "";
+
+  // Label prefix
+  const lbl = document.createElement("span");
+  lbl.className   = "text-[9px] text-muted tracking-widest uppercase mr-1";
+  lbl.textContent = "Monitor:";
+  bar.appendChild(lbl);
+
+  // One button per interface
+  ifaces.forEach(({ name, label }) => {
+    const btn = document.createElement("button");
+    btn.className = [
+      "text-[10px] px-2.5 py-1 rounded border font-mono transition-all",
+      name === active
+        ? "bg-ink text-pulse border-ink"
+        : "bg-surface text-muted border-border2 hover:border-ink hover:text-ink",
+      ifaceSwitching ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
+    ].join(" ");
+    btn.textContent  = label;
+    btn.title        = name;    // raw name on hover
+    btn.dataset.iface = name;
+    btn.disabled     = ifaceSwitching;
+    btn.addEventListener("click", () => switchInterface(name));
+    bar.appendChild(btn);
+  });
+
+  // "Switching…" indicator
+  const sw = document.createElement("span");
+  sw.id        = "iface-switching";
+  sw.className = `text-[9px] text-amber-600 tracking-widest ${ifaceSwitching ? "" : "hidden"}`;
+  sw.textContent = "switching…";
+  bar.appendChild(sw);
+}
+
+async function switchInterface(iface) {
+  if (iface === currentIface || ifaceSwitching) return;
+  ifaceSwitching = true;
+
+  // Grey-out buttons during the switch
+  document.querySelectorAll("#iface-bar button").forEach(b => b.disabled = true);
+  const sw = document.getElementById("iface-switching");
+  if (sw) sw.classList.remove("hidden");
+
+  try {
+    const res  = await fetch(`${API}/api/interface`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ iface }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      currentIface = iface;
+    } else {
+      alert("Switch failed: " + (data.error || "unknown error"));
     }
-    el.innerHTML = devs.map(d => {
-      const pct = Math.min((d.current_mbps / 15) * 100, 100).toFixed(0);
+  } catch (_) {
+    alert("Switch failed: cannot reach backend");
+  } finally {
+    ifaceSwitching = false;
+    await loadInterfaces();
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Device rendering
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Render mobile card view */
+function renderDeviceCards(devs) {
+  const el = document.getElementById("device-cards");
+
+  if (!devs.length) {
+    el.innerHTML = `<div class="text-center py-6 text-[11px] text-muted">No devices detected</div>`;
+    return;
+  }
+
+  el.innerHTML = devs.map(d => {
+    const cls = bwClass(d);
+    const pct = Math.min((d.current_mbps / 15) * 100, 100).toFixed(0);
+    const proto = PROTO_BADGE[d.protocol] || "bg-gray-100 text-gray-600";
+
+    return `
+      <div class="border rounded-md p-3 ${d.flagged ? "border-red-400 bg-red-50" : "border-border"}">
+
+        <!-- Top row: hostname + FLAGGED tag -->
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <p class="text-[13px] font-semibold ${d.flagged ? "text-red-600" : ""}">${d.hostname}</p>
+            <p class="text-[10px] text-muted mt-0.5">${d.mac || ""} <span class="ml-1">${d.ip}</span></p>
+          </div>
+          ${d.flagged ? '<span class="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded flash tracking-widest">FLAGGED</span>' : ""}
+        </div>
+
+        <!-- Tags row -->
+        <div class="flex items-center gap-1.5 flex-wrap mb-2">
+          <span class="text-[10px] font-medium px-1.5 py-0.5 rounded ${proto}">${d.protocol}</span>
+          <span class="text-[10px] text-muted bg-base border border-border px-1.5 py-0.5 rounded">${d.service}</span>
+          <span class="text-[10px] text-muted ml-auto">${fmtNum(d.packet_count)} pkts</span>
+        </div>
+
+        <!-- Bandwidth bar -->
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+            <div class="h-full bar-fill rounded-full ${BW_BAR[cls]}" style="width:${pct}%"></div>
+          </div>
+          <span class="text-[11px] font-medium w-20 text-right ${BW_TEXT[cls]}">${d.current_mbps} Mbps</span>
+        </div>
+
+      </div>`;
+  }).join("");
+}
+
+/** Render desktop table view */
+function renderDeviceTable(devs) {
+  const tbody = document.getElementById("device-tbody");
+
+  if (!devs.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted text-[11px] py-6">No devices detected</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = devs.map(d => {
+    const cls   = bwClass(d);
+    const pct   = Math.min((d.current_mbps / 15) * 100, 100).toFixed(0);
+    const proto = PROTO_BADGE[d.protocol] || "bg-gray-100 text-gray-600";
+
+    return `
+      <tr class="border-b border-border hover:bg-base/60 ${d.flagged ? "bg-red-50 hover:bg-red-50" : ""}">
+
+        <td class="px-4 py-2.5">
+          <p class="text-[13px] font-semibold ${d.flagged ? "text-red-600" : ""}">
+            ${d.hostname}
+            ${d.flagged ? '<span class="ml-2 text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded flash tracking-widest">FLAGGED</span>' : ""}
+          </p>
+          <p class="text-[10px] text-muted">${d.mac || ""}</p>
+        </td>
+
+        <td class="px-4 py-2.5 text-[11px] text-muted">${d.ip}</td>
+
+        <td class="px-4 py-2.5">
+          <span class="text-[10px] font-medium px-1.5 py-0.5 rounded ${proto}">${d.protocol}</span>
+        </td>
+
+        <td class="px-4 py-2.5 text-[12px] text-muted">${d.service}</td>
+
+        <td class="px-4 py-2.5">
+          <div class="flex items-center gap-2">
+            <div class="flex-1 h-1.5 bg-border rounded-full overflow-hidden min-w-[60px]">
+              <div class="h-full bar-fill rounded-full ${BW_BAR[cls]}" style="width:${pct}%"></div>
+            </div>
+            <span class="text-[11px] font-medium w-20 text-right ${BW_TEXT[cls]}">${d.current_mbps} Mbps</span>
+          </div>
+        </td>
+
+        <td class="px-4 py-2.5 text-[11px] text-muted">${fmtNum(d.packet_count)}</td>
+      </tr>`;
+  }).join("");
+}
+
+function renderDevices(devs) {
+  document.getElementById("device-count").textContent = `${devs.length} online`;
+  renderDeviceCards(devs);
+  renderDeviceTable(devs);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Alert feed
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ALERT_STYLE = {
+  critical: { row: "bg-red-50",     text: "text-red-600"   },
+  warning:  { row: "bg-amber-50",   text: "text-amber-600" },
+  info:     { row: "",              text: "text-ink"       },
+};
+
+function renderAlerts(alerts) {
+  document.getElementById("alert-count").textContent = alerts.length;
+  const el = document.getElementById("alerts-list");
+
+  if (!alerts.length) {
+    el.innerHTML = `
+      <div class="flex gap-2.5 px-4 py-2 text-[11px] text-muted">
+        <span class="shrink-0">--:--:--</span><span>No alerts yet</span>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = alerts.slice(0, 40).map(a => {
+    const s = ALERT_STYLE[a.level] || ALERT_STYLE.info;
+    return `
+      <div class="flex gap-2.5 px-4 py-2 border-b border-border last:border-0 ${s.row}">
+        <span class="shrink-0 text-[10px] text-muted pt-px">${a.time}</span>
+        <span class="text-[12px] leading-snug ${s.text}">${a.message}</span>
+      </div>`;
+  }).join("");
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Protocol chart
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PROTO_FILL = {
+  TCP:  "bg-blue-100  text-blue-700",
+  UDP:  "bg-green-100 text-green-700",
+  ICMP: "bg-amber-100 text-amber-700",
+};
+
+function renderProto(data) {
+  const total = Object.values(data).reduce((s, v) => s + v, 0) || 1;
+
+  document.getElementById("proto-chart").innerHTML =
+    Object.entries(data).map(([proto, bytes]) => {
+      const pct    = ((bytes / total) * 100).toFixed(1);
+      const isZero = bytes === 0;
+      const fill   = PROTO_FILL[proto] || "bg-gray-100 text-gray-600";
+
       return `
-        <div class="device-card ${d.flagged ? 'flagged' : ''}">
-          <div class="device-card-top">
-            <div>
-              <div class="device-name ${d.flagged ? 'flagged' : ''}">${d.hostname}</div>
-              <div class="device-mac">${d.mac || ''} &nbsp;<span class="ip-inline">${d.ip}</span></div>
+        <div class="flex items-center gap-2 mb-2.5 last:mb-0">
+          <span class="text-[11px] font-semibold w-10">${proto}</span>
+          <div class="flex-1 h-6 bg-base border border-border rounded overflow-hidden">
+            <div class="h-full flex items-center px-2 text-[10px] font-medium bar-fill ${isZero ? "bg-border text-muted w-7" : fill}"
+                 style="${isZero ? "" : `width:${pct}%`}">
+              ${isZero ? "0%" : pct + "%"}
             </div>
-            ${d.flagged ? '<span class="flag-tag">FLAGGED</span>' : ''}
           </div>
-          <div class="device-card-meta">
-            <span class="proto-tag ${d.protocol}">${d.protocol}</span>
-            <span class="svc-tag">${d.service}</span>
-            <span class="pkt-tag">${fmtNum(d.packet_count)} pkts</span>
-          </div>
-          <div class="bw-row">
-            <div class="bw-track">
-              <div class="bw-fill ${d.behavior}" style="width:${pct}%"></div>
-            </div>
-            <span class="bw-val ${d.behavior}">${d.current_mbps} Mbps</span>
-          </div>
+          <span class="text-[10px] text-muted w-14 text-right">${isZero ? "0 B" : fmtBytes(bytes)}</span>
         </div>`;
     }).join("");
-  }
+}
 
-  // ── Devices: desktop table ──
-  function renderDeviceTable(devs) {
-    const tbody = document.getElementById("device-tbody");
-    if (!devs.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;font-family:var(--mono);font-size:11px;">No devices detected</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = devs.map(d => {
-      const pct = Math.min((d.current_mbps / 15) * 100, 100).toFixed(0);
-      return `
-        <tr class="${d.flagged ? 'flagged' : ''}">
-          <td>
-            <div style="font-size:13px;font-weight:600;color:${d.flagged ? 'var(--red)' : 'var(--text)'};">
-              ${d.hostname}
-              ${d.flagged ? '<span class="flag-tag" style="margin-left:6px;">FLAGGED</span>' : ''}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bandwidth leaderboard
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+function renderBW(data) {
+  const sorted = [...data].sort((a, b) => b.total_mb - a.total_mb);
+  const max    = sorted[0]?.total_mb || 1;
+
+  document.getElementById("bw-list").innerHTML = sorted.map((d, i) => {
+    const cls = d.flagged || d.behavior === "abusive" ? "abusive"
+              : d.current_mbps >= 2 ? "moderate"
+              : "normal";
+    const pct = ((d.total_mb / max) * 100).toFixed(0);
+
+    return `
+      <div class="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+        <span class="text-[13px] w-5 shrink-0">${MEDALS[i] || String(i + 1)}</span>
+
+        <div class="flex-1 min-w-0">
+          <p class="text-[12px] font-semibold truncate ${d.flagged ? "text-red-600" : ""}">
+            ${d.hostname}${d.flagged ? " !" : ""}
+          </p>
+          <div class="flex items-center gap-2 mt-1">
+            <div class="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+              <div class="h-full bar-fill rounded-full ${BW_BAR[cls]}" style="width:${pct}%"></div>
             </div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">${d.mac || ''}</div>
-          </td>
-          <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${d.ip}</td>
-          <td><span class="proto-tag ${d.protocol}">${d.protocol}</span></td>
-          <td style="font-size:12px;color:var(--muted);">${d.service}</td>
-          <td>
-            <div class="bw-row">
-              <div class="bw-track"><div class="bw-fill ${d.behavior}" style="width:${pct}%"></div></div>
-              <span class="bw-val ${d.behavior}">${d.current_mbps} Mbps</span>
-            </div>
-          </td>
-          <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${fmtNum(d.packet_count)}</td>
-        </tr>`;
-    }).join("");
-  }
+          </div>
+          <p class="text-[10px] text-muted mt-0.5">${fmtMB(d.total_mb)}</p>
+        </div>
 
-  function renderDevices(devs) {
-    document.getElementById("device-count").textContent = devs.length + " online";
-    renderDeviceCards(devs);
-    renderDeviceTable(devs);
-  }
+        <span class="text-[12px] font-medium shrink-0 ${BW_TEXT[cls]}">${d.current_mbps} Mbps</span>
+      </div>`;
+  }).join("");
+}
 
-  // ── Alerts ──
-  function renderAlerts(alerts) {
-    document.getElementById("alert-count").textContent = alerts.length;
-    const el = document.getElementById("alerts-list");
-    if (!alerts.length) {
-      el.innerHTML = `<div class="alert-item info"><span class="alert-time">--:--:--</span><span class="alert-msg">No alerts yet</span></div>`;
-      return;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Summary stat cards
+// ─────────────────────────────────────────────────────────────────────────────
+
+function renderStats(s) {
+  document.getElementById("stat-devices").textContent  = s.active_devices;
+  document.getElementById("stat-data").textContent     = fmtMB(s.total_mb);  // already in MB
+  document.getElementById("stat-flagged").textContent  = s.flagged_devices;
+  document.getElementById("stat-alerts").textContent   = s.total_alerts;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Health check (separate lightweight ping every 5 s)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function checkHealth() {
+  try {
+    const data = await fetch(`${API}/api/health`).then(r => r.json());
+    setHealth(data.status === "ok" ? "ok" : "degraded");
+  } catch (_) {
+    setHealth("degraded");
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main poll loop — fetches everything in parallel every 2 s
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function fetchAll() {
+  try {
+    const [devs, alerts, proto, bw, stats] = await Promise.all([
+      fetch(`${API}/api/devices`).then(r => r.json()),
+      fetch(`${API}/api/alerts`).then(r => r.json()),
+      fetch(`${API}/api/protocols`).then(r => r.json()),
+      fetch(`${API}/api/bandwidth`).then(r => r.json()),
+      fetch(`${API}/api/stats`).then(r => r.json()),
+    ]);
+
+    setHealth("ok");
+    renderDevices(devs);
+    renderAlerts(alerts);
+    renderProto(proto);
+    renderBW(bw);
+    renderStats(stats);
+    document.getElementById("last-sync").textContent =
+      new Date().toLocaleTimeString("en-GB");
+
+    // Keep interface bar in sync if the interface changed server-side
+    const ifaceData = await fetch(`${API}/api/interface`).then(r => r.json());
+    if (ifaceData.interface && ifaceData.interface !== currentIface) {
+      currentIface = ifaceData.interface;
+      await loadInterfaces();
     }
-    el.innerHTML = alerts.slice(0, 40).map(a => `
-      <div class="alert-item ${a.level}">
-        <span class="alert-time">${a.time}</span>
-        <span class="alert-msg">${a.message}</span>
-      </div>`).join("");
-  }
 
-  // ── Protocol chart ──
-  function renderProto(data) {
-    const total = Object.values(data).reduce((s, v) => s + v, 0) || 1;
-    document.getElementById("proto-chart").innerHTML = Object.entries(data).map(([p, b]) => {
-      const pct = ((b / total) * 100).toFixed(1);
-      return `
-        <div class="proto-row">
-          <span class="proto-name ${p}">${p}</span>
-          <div class="proto-track">
-            <div class="proto-fill ${p}" style="width:${pct}%">${pct}%</div>
-          </div>
-          <span class="proto-bytes">${fmtBytes(b)}</span>
-        </div>`;
-    }).join("");
-  }
+  } catch (err) {
+    setHealth("degraded");
+    console.error("Fetch error:", err);
 
-  // ── Bandwidth leaderboard ──
-  function renderBW(data) {
-    const sorted = [...data].sort((a, b) => b.total_mb - a.total_mb);
-    const max = sorted[0]?.total_mb || 1;
-    const medals = ["🥇", "🥈", "🥉"];
-    document.getElementById("bw-list").innerHTML = sorted.map((d, i) => {
-      const pct = ((d.total_mb / max) * 100).toFixed(0);
-      return `
-        <div class="bw-item">
-          <span class="bw-rank">${medals[i] || String(i + 1)}</span>
-          <div class="bw-info">
-            <div class="bw-hostname ${d.flagged ? 'flagged' : ''}">${d.hostname}${d.flagged ? ' !' : ''}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-              <div class="bw-track" style="flex:1;">
-                <div class="bw-fill ${d.behavior}" style="width:${pct}%"></div>
-              </div>
-            </div>
-            <div class="bw-total">${fmtMB(d.total_mb)}</div>
-          </div>
-          <div class="bw-right">
-            <div class="bw-mbps ${d.behavior}">${d.current_mbps} Mbps</div>
-          </div>
-        </div>`;
-    }).join("");
+    const errHtml = `<div class="text-center py-6 text-[11px] text-red-500">Cannot reach backend — check server</div>`;
+    document.getElementById("device-cards").innerHTML = errHtml;
+    document.getElementById("device-tbody").innerHTML =
+      `<tr><td colspan="6" class="text-center text-red-500 text-[11px] py-6">Cannot reach backend — check server</td></tr>`;
   }
+}
 
-  // ── Summary stats ──
-  function renderStats(s) {
-    document.getElementById("stat-devices").textContent = s.active_devices;
-    document.getElementById("stat-data").textContent = fmtMB(s.total_mb);
-    document.getElementById("stat-flagged").textContent = s.flagged_devices;
-    document.getElementById("stat-alerts").textContent = s.total_alerts;
-  }
 
-  // ── Fetch loop ──
-  async function fetchAll() {
-    try {
-      const [devs, alerts, proto, bw, stats] = await Promise.all([
-        fetch(`${API}/api/devices`).then(r => r.json()),
-        fetch(`${API}/api/alerts`).then(r => r.json()),
-        fetch(`${API}/api/protocols`).then(r => r.json()),
-        fetch(`${API}/api/bandwidth`).then(r => r.json()),
-        fetch(`${API}/api/stats`).then(r => r.json()),
-      ]);
-      renderDevices(devs);
-      renderAlerts(alerts);
-      renderProto(proto);
-      renderBW(bw);
-      renderStats(stats);
-      document.getElementById("last-sync").textContent = new Date().toLocaleTimeString("en-GB");
-    } catch (err) {
-      console.error("Fetch error:", err);
-      document.getElementById("device-cards").innerHTML =
-        `<div style="padding:24px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--red);">Cannot reach backend — check server</div>`;
-      document.getElementById("device-tbody").innerHTML =
-        `<tr><td colspan="6" style="text-align:center;color:var(--red);padding:24px;font-family:var(--mono);font-size:11px;">Cannot reach backend — check server</td></tr>`;
-    }
-  }
-
-  fetchAll();
-  setInterval(fetchAll, POLL_MS);
+// ─────────────────────────────────────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────────────────────────────────────
+loadInterfaces();
+fetchAll();
+setInterval(fetchAll,     POLL_MS);
+setInterval(checkHealth,  5000);
 </script>
 </body>
 </html>
