@@ -40,7 +40,7 @@ A real-time network monitoring tool built with Scapy and Flask. Sniffs live IP t
 - Root / sudo (Scapy requires raw socket access)
 
 ```bash
-pip install scapy flask
+pip install -r requirements.txt
 ```
 
 ## Running
